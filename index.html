@@ -1,43 +1,97 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>My Chat App</title>
+    <title>Private Chat</title>
     <style>
-      body { margin: 0; padding-bottom: 3rem; font-family: sans-serif; }
+      body { margin: 0; padding-bottom: 3rem; font-family: sans-serif; background: #f0f2f5; }
+      
+      /* Login Screen Styles */
+      #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #222; display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+      #login-box { background: white; padding: 2rem; border-radius: 10px; text-align: center; width: 300px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+      #login-box h2 { margin-top: 0; color: #333; }
+      input.login-input { width: 90%; padding: 10px; margin: 10px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
+      #join-btn { width: 100%; padding: 10px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+      #join-btn:hover { background: #0056b3; }
+      #error-msg { color: red; display: none; margin-top: 10px; }
+
+      /* Chat Styles (Hidden until login) */
+      #main-chat { display: none; } 
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages > li { padding: 0.5rem 1rem; }
+      #messages > li:nth-child(odd) { background: #e9e9e9; }
+      
       #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
       #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
       #input:focus { outline: none; }
       #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; cursor: pointer; }
-      #messages { list-style-type: none; margin: 0; padding: 0; }
-      #messages > li { padding: 0.5rem 1rem; }
-      #messages > li:nth-child(odd) { background: #efefef; }
     </style>
   </head>
   <body>
-    <ul id="messages"></ul>
-    <form id="form" action="">
-      <input id="input" autocomplete="off" /><button>Send</button>
-    </form>
+
+    <div id="login-screen">
+      <div id="login-box">
+        <h2>🔒 Private Chat</h2>
+        <input id="username-input" class="login-input" placeholder="Enter your Nickname" autocomplete="off" />
+        <input id="password-input" class="login-input" type="password" placeholder="Room Password" />
+        <button id="join-btn">Enter Room</button>
+        <p id="error-msg">Wrong Password!</p>
+      </div>
+    </div>
+
+    <div id="main-chat">
+      <ul id="messages"></ul>
+      <form id="form" action="">
+        <input id="input" autocomplete="off" placeholder="Type a message..." /><button>Send</button>
+      </form>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
       var socket = io();
 
+      // Login Elements
+      var loginScreen = document.getElementById('login-screen');
+      var mainChat = document.getElementById('main-chat');
+      var usernameInput = document.getElementById('username-input');
+      var passwordInput = document.getElementById('password-input');
+      var joinBtn = document.getElementById('join-btn');
+      var errorMsg = document.getElementById('error-msg');
+
+      // 1. Send Login Request
+      joinBtn.addEventListener('click', function() {
+        if (usernameInput.value && passwordInput.value) {
+          // Send name and password to server
+          socket.emit('login request', { 
+            name: usernameInput.value, 
+            pass: passwordInput.value 
+          });
+        }
+      });
+
+      // 2. Listen for Login Success/Fail
+      socket.on('login success', function() {
+        loginScreen.style.display = 'none'; // Hide login
+        mainChat.style.display = 'block';   // Show chat
+      });
+
+      socket.on('login fail', function() {
+        errorMsg.style.display = 'block';   // Show red error
+        passwordInput.value = '';           // Clear bad password
+      });
+
+      // 3. Handle Chatting
       var form = document.getElementById('form');
       var input = document.getElementById('input');
       var messages = document.getElementById('messages');
 
-      // When you press Send
       form.addEventListener('submit', function(e) {
         e.preventDefault();
         if (input.value) {
-          // Send the message to the server
           socket.emit('chat message', input.value);
           input.value = '';
         }
       });
 
-      // When a message comes IN from the server
       socket.on('chat message', function(msg) {
         var item = document.createElement('li');
         item.textContent = msg;

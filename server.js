@@ -6,28 +6,46 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// 1. Serve the HTML file when someone visits the site
+// --- CONFIGURATION ---
+const port = process.env.PORT || 3000;
+const ROOM_PASSWORD = "monkey123"; // <--- CHANGE THIS TO YOUR SECRET PASSWORD
+
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
 
-// 2. Listen for connections
 io.on('connection', (socket) => {
-  console.log('A user connected');
+  let isLoggedIn = false;
+  let userNickname = "Anonymous";
 
-  // When the server receives a 'chat message' from one person...
+  // 1. Verify Password when someone tries to join
+  socket.on('login request', (data) => {
+    if (data.pass === ROOM_PASSWORD) {
+      // Success!
+      isLoggedIn = true;
+      userNickname = data.name;
+      socket.emit('login success'); // Tell frontend to show chat
+      io.emit('chat message', `--- ${userNickname} joined the room ---`);
+      console.log(`${userNickname} logged in.`);
+    } else {
+      // Fail!
+      socket.emit('login fail');
+    }
+  });
+
+  // 2. Only allow messages if they are logged in
   socket.on('chat message', (msg) => {
-    // ...it sends that message back to EVERYONE connected
-    io.emit('chat message', msg);
+    if (isLoggedIn) {
+      io.emit('chat message', `${userNickname}: ${msg}`);
+    }
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected');
+    if (isLoggedIn) {
+      io.emit('chat message', `--- ${userNickname} left ---`);
+    }
   });
 });
-
-// Use the port the cloud gives us, OR use 3000 if we are on localhost
-const port = process.env.PORT || 3000;
 
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
