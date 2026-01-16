@@ -3,27 +3,33 @@
   <head>
     <title>Private Chat</title>
     <style>
-      body { margin: 0; padding-bottom: 3rem; font-family: sans-serif; background: #f0f2f5; }
+      body { margin: 0; padding-bottom: 6rem; font-family: sans-serif; background: #f0f2f5; }
       
-      /* Login Screen Styles */
+      /* Login Styles */
       #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #222; display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
-      #login-box { background: white; padding: 2rem; border-radius: 10px; text-align: center; width: 300px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-      #login-box h2 { margin-top: 0; color: #333; }
+      #login-box { background: white; padding: 2rem; border-radius: 10px; text-align: center; width: 300px; }
       input.login-input { width: 90%; padding: 10px; margin: 10px 0; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
-      #join-btn { width: 100%; padding: 10px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-      #join-btn:hover { background: #0056b3; }
-      #error-msg { color: red; display: none; margin-top: 10px; }
+      #join-btn { width: 100%; padding: 10px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
 
-      /* Chat Styles (Hidden until login) */
-      #main-chat { display: none; } 
+      /* Chat Styles */
+      #main-chat { display: none; }
       #messages { list-style-type: none; margin: 0; padding: 0; }
-      #messages > li { padding: 0.5rem 1rem; }
+      #messages > li { padding: 0.5rem 1rem; border-bottom: 1px solid #ddd; }
       #messages > li:nth-child(odd) { background: #e9e9e9; }
       
-      #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
-      #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
-      #input:focus { outline: none; }
-      #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; cursor: pointer; }
+      /* Input Area */
+      #form-container { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+      #sticker-bar { margin-bottom: 5px; }
+      #sticker-bar button { font-size: 1.5rem; background: none; border: none; cursor: pointer; padding: 5px; }
+      #sticker-bar button:hover { transform: scale(1.2); }
+      
+      #form { display: flex; height: 3rem; }
+      #input { border: 1px solid #ccc; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; }
+      #input:focus { outline: none; border-color: #007bff; }
+      #form > button { background: #333; border: none; padding: 0 1rem; margin-left: 0.5rem; border-radius: 5px; color: #fff; cursor: pointer; }
+      
+      /* Image Sizing in Chat */
+      .chat-img { max-width: 150px; border-radius: 10px; display: block; margin-top: 5px; }
     </style>
   </head>
   <body>
@@ -31,59 +37,59 @@
     <div id="login-screen">
       <div id="login-box">
         <h2>🔒 Private Chat</h2>
-        <input id="username-input" class="login-input" placeholder="Enter your Nickname" autocomplete="off" />
-        <input id="password-input" class="login-input" type="password" placeholder="Room Password" />
-        <button id="join-btn">Enter Room</button>
-        <p id="error-msg">Wrong Password!</p>
+        <input id="username-input" class="login-input" placeholder="Nickname" autocomplete="off" />
+        <input id="password-input" class="login-input" type="password" placeholder="Password" />
+        <button id="join-btn">Enter</button>
       </div>
     </div>
 
     <div id="main-chat">
       <ul id="messages"></ul>
-      <form id="form" action="">
-        <input id="input" autocomplete="off" placeholder="Type a message..." /><button>Send</button>
-      </form>
+      
+      <div id="form-container">
+        <div id="sticker-bar">
+          <button onclick="sendSticker('sticker.png')">😸</button>
+        </div>
+
+        <form id="form" action="">
+          <input id="input" autocomplete="off" placeholder="Type a message..." /><button>Send</button>
+        </form>
+      </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
       var socket = io();
 
-      // Login Elements
+      // --- LOGIN LOGIC ---
       var loginScreen = document.getElementById('login-screen');
       var mainChat = document.getElementById('main-chat');
       var usernameInput = document.getElementById('username-input');
       var passwordInput = document.getElementById('password-input');
       var joinBtn = document.getElementById('join-btn');
-      var errorMsg = document.getElementById('error-msg');
 
-      // 1. Send Login Request
       joinBtn.addEventListener('click', function() {
         if (usernameInput.value && passwordInput.value) {
-          // Send name and password to server
-          socket.emit('login request', { 
-            name: usernameInput.value, 
-            pass: passwordInput.value 
-          });
+          socket.emit('login request', { name: usernameInput.value, pass: passwordInput.value });
         }
       });
 
-      // 2. Listen for Login Success/Fail
       socket.on('login success', function() {
-        loginScreen.style.display = 'none'; // Hide login
-        mainChat.style.display = 'block';   // Show chat
+        loginScreen.style.display = 'none';
+        mainChat.style.display = 'block';
       });
 
       socket.on('login fail', function() {
-        errorMsg.style.display = 'block';   // Show red error
-        passwordInput.value = '';           // Clear bad password
+        alert("Wrong Password!");
+        passwordInput.value = '';
       });
 
-      // 3. Handle Chatting
+      // --- CHAT LOGIC ---
       var form = document.getElementById('form');
       var input = document.getElementById('input');
       var messages = document.getElementById('messages');
 
+      // Send Text
       form.addEventListener('submit', function(e) {
         e.preventDefault();
         if (input.value) {
@@ -92,9 +98,18 @@
         }
       });
 
+      // Send Sticker Function
+      window.sendSticker = function(filename) {
+        // We send a special HTML code for the image
+        var htmlCode = `<br><img src="${filename}" class="chat-img">`;
+        socket.emit('chat message', htmlCode);
+      }
+
+      // Receive Message
       socket.on('chat message', function(msg) {
         var item = document.createElement('li');
-        item.textContent = msg;
+        // IMPORTANT: We use innerHTML so the image tag renders!
+        item.innerHTML = msg; 
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
       });
